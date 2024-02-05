@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.CheckNoKey;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.CheckSameKey;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.EntityJsonPrinter;
@@ -34,6 +37,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -255,11 +260,12 @@ public class DatastoreConvertersTest implements Serializable {
               .build();
       testEntitiesWithNoKey.add(noKeyEntity);
       expectedErrors.add(
-          ErrorMessage.newBuilder()
-              .setMessage("Datastore Entity Without Key")
-              .setData(entityJsonPrinter.print(noKeyEntity))
-              .build()
-              .toJson());
+          sortJsonString(
+              ErrorMessage.newBuilder()
+                  .setMessage("Datastore Entity Without Key")
+                  .setData(entityJsonPrinter.print(noKeyEntity))
+                  .build()
+                  .toJson()));
     }
 
     // Run the test
@@ -279,6 +285,15 @@ public class DatastoreConvertersTest implements Serializable {
     PAssert.that(results.get(successTag)).empty();
     PAssert.that(results.get(failureTag)).containsInAnyOrder(expectedErrors);
     pipeline.run();
+  }
+
+  public static String sortJsonString(String json) throws JsonProcessingException {
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    Map<String, Object> map =
+        objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+    Map<String, Object> sortedMap = new TreeMap<>(map); // Call the method to deeply sort the map
+    return objectMapper.writeValueAsString(sortedMap);
   }
 
   /** Test {@link DatastoreConverters.CheckNoKey} with both correct and invalid entities. */

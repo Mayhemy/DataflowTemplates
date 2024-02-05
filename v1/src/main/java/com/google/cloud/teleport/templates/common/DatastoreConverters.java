@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorMessage;
@@ -33,7 +36,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreV1;
 import org.apache.beam.sdk.metrics.Counter;
@@ -882,6 +887,15 @@ public class DatastoreConverters {
       return new AutoValue_DatastoreConverters_CheckNoKey.Builder();
     }
 
+    public static String sortJsonString(String json) throws JsonProcessingException {
+
+      ObjectMapper objectMapper = new ObjectMapper();
+      Map<String, Object> map =
+          objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+      Map<String, Object> sortedMap = new TreeMap<>(map); // Call the method to deeply sort the map
+      return objectMapper.writeValueAsString(sortedMap);
+    }
+
     @Override
     public PCollectionTuple expand(PCollection<Entity> entities) {
       return entities.apply(
@@ -906,7 +920,7 @@ public class DatastoreConverters {
                                 .setMessage("Datastore Entity Without Key")
                                 .setData(entityJsonPrinter.print(entity))
                                 .build();
-                        c.output(failureTag(), errorMessage.toJson());
+                        c.output(failureTag(), sortJsonString(errorMessage.toJson()));
                       }
                     }
                   })
